@@ -253,15 +253,13 @@ int main(int argc, char *argv[]){
       data[0] = player.x;
       data[1] = player.y;
       dataPtr = (void*)data; 
-      if(SDLNet_TCP_Send(client,dataPtr,6*sizeof(dataPtr)) > 0){  
+      if(SDLNet_TCP_Send(client,dataPtr,6*sizeof(dataPtr)) > 0){ 
         SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
-        for(int i = 0;i<sizeof(PLAYERSDATA)/sizeof(PLAYERSDATA[0]);i++){
-          printf("%d :%f\n",i,PLAYERSDATA[i]);
         }
-        int index = PLAYERSDATA[2*MAX_CLIENTS];
+      else{break;}
+    
         last_tick = SDL_GetTicks();
-       }
-    else{break;}
+       
     }
     MainLoop();
   }
