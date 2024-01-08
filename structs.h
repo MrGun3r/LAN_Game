@@ -19,9 +19,14 @@ struct playersData{
   float veloY;
   float accelerationX;
   float accelerationY;
+  float knockBackX;
+  float knockBackY;
   float speedLimit;
 } player;
-
+struct rocketData{
+ float x;
+ float y;
+} rocket;
 struct PlatformData{
     bool reserved;
     float x;
@@ -29,3 +34,5 @@ struct PlatformData{
     float width;
     float height;
 };
+
+struct PlatformData platforms[10];
