@@ -6,7 +6,7 @@
 #define GRAVITY 1000
 #define PI 3.1415
 #define MAX_CLIENTS 3
-#define MAX_ROCKETS 10
+#define MAX_ROCKETS 4
 float FRICTION = 0.1;
 int windowWidth = 900;
 int windowHeight = 600;
@@ -16,7 +16,7 @@ bool running = true;
 float deltaTime = 0;
 float last_frame = 0;
 float last_tick = 0;
-float PLAYERSDATA[MAX_CLIENTS*2+1+4*MAX_ROCKETS];
+float PLAYERSDATA[MAX_CLIENTS*2+1+2*MAX_ROCKETS];
 float data[6];
 int tickInit = 0;
 // FILE HEADERS
@@ -178,7 +178,7 @@ void DrawVideo(){
     }
     // DRAW ROCKETS
     SDL_SetRenderDrawColor(renderer,100,0,0,255);
-    for(int i = 2*MAX_CLIENTS+1;i<MAX_CLIENTS*2+1+4*MAX_ROCKETS;i+=4){
+    for(int i = 2*MAX_CLIENTS+1;i<MAX_CLIENTS*2+1+2*MAX_ROCKETS;i+=2){
       SDL_RenderFillRect(renderer,&(SDL_Rect){
         PLAYERSDATA[i],PLAYERSDATA[i+1],10,10
       });
@@ -250,16 +250,17 @@ int main(int argc, char *argv[]){
   SDLNet_TCP_AddSocket(socketSet, client);
   while(running){
     if(SDL_GetTicks()-last_tick>0){
-      if(SDLNet_TCP_Send(client,dataPtr,6*sizeof(dataPtr)) > 0){
       data[0] = player.x;
       data[1] = player.y;
-      dataPtr = (void*)data;
-     if(SDLNet_CheckSockets(socketSet,1000) != -1){
-      SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
-     }
-    int index = PLAYERSDATA[2*MAX_CLIENTS];
-    last_tick = SDL_GetTicks();
-    }
+      dataPtr = (void*)data; 
+      if(SDLNet_TCP_Send(client,dataPtr,6*sizeof(dataPtr)) > 0){  
+        SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
+        for(int i = 0;i<sizeof(PLAYERSDATA)/sizeof(PLAYERSDATA[0]);i++){
+          printf("%d :%f\n",i,PLAYERSDATA[i]);
+        }
+        int index = PLAYERSDATA[2*MAX_CLIENTS];
+        last_tick = SDL_GetTicks();
+       }
     else{break;}
     }
     MainLoop();
