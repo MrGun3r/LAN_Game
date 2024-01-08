@@ -98,8 +98,8 @@ void ControlPlayer(){
   }
   else{
     int index = PLAYERSDATA[2*MAX_CLIENTS];
-    data[2] = PLAYERSDATA[2*MAX_CLIENTS+1+4*index];
-    data[3] = PLAYERSDATA[2*MAX_CLIENTS+1+4*index+1];
+    data[2] = PLAYERSDATA[2*MAX_CLIENTS+1+2*index];
+    data[3] = PLAYERSDATA[2*MAX_CLIENTS+1+2*index+1];
   }
  
   
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]){
   INIT_GAMEDATA();
   SDLNet_Init();
   IPaddress ip;
-  SDLNet_ResolveHost(&ip,"192.168.8.119",1234);
+  SDLNet_ResolveHost(&ip,"192.168.8.116",1234);
   TCPsocket client=SDLNet_TCP_Open(&ip);
   void* dataPtr = data;
   SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
