@@ -27,7 +27,6 @@ int main(int argc, char *argv[]){
   IPaddress ip2;
   SDLNet_ResolveHost(&ip,NULL,1234);
   TCPsocket server=SDLNet_TCP_Open(&ip);
-
   printf("Network Port is:%d\n",SDLNet_Read16(&ip.port));
   Uint8* IpIter =(Uint8*) &ip.host;
   printf("Network IP address is: ");
@@ -36,8 +35,12 @@ int main(int argc, char *argv[]){
   printf("%d.",*(IpIter+2));
   printf("%d ",*(IpIter+3));
   printf("\n");
-
+  
   ClientData clients[MAX_CLIENTS] = {0};
+  SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(MAX_CLIENTS);
+  for(int i = 0;i<MAX_CLIENTS;i++){
+    SDLNet_TCP_AddSocket(socketSet, clients[i].socket);
+  }
   while(1){
     for(int i = 0;i<MAX_CLIENTS;i++){
         if(!clients[i].socket){
@@ -55,7 +58,7 @@ int main(int argc, char *argv[]){
     for(int i = 0;i<MAX_CLIENTS;i++){
     if(clients[i].socket){
       float data[6];
-    if(SDLNet_TCP_Recv(clients[i].socket,data,sizeof(data)) <= 0){
+    if(SDLNet_CheckSockets(socketSet,1000) != -1 && (clients[i].socket,data,sizeof(data)) <= 0){
        clients[i].socket = 0;
        activeClients--;
        activeClientList[i] = 0;
@@ -63,6 +66,11 @@ int main(int argc, char *argv[]){
        gameData[2*i] = -99;
        gameData[2*i+1] = -99;
        continue;
+    }
+    else{
+      for(int i = 0;i<6;i++){
+        data[i] = -99;
+      }
     }
     ServerData(&data);
     // player position
@@ -75,10 +83,10 @@ int main(int argc, char *argv[]){
     // player index
     gameData[2*MAX_CLIENTS] = i;
     void* gameDataPtr = gameData;
+    
     SDLNet_TCP_Send(clients[i].socket,gameDataPtr,sizeof(gameData));
      }
-    }
-    SDL_Delay(10);     
+    }   
   }
   SDLNet_TCP_Close(server);
   SDLNet_Quit();

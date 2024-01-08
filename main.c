@@ -89,7 +89,7 @@ void ControlPlayer(){
     int index = PLAYERSDATA[2*MAX_CLIENTS];
     data[2] = player.x+player.width/4;
     data[3] = player.y+player.height/4;
-    float angle = SDL_atan((player.y+player.height/2 - mouse.y)/(player.x-player.width/2 - mouse.x));
+    float angle = SDL_atan((player.y+player.height/2 - mouse.y)/(player.x+player.width/2 - mouse.x));
     if((float)mouse.x >= player.x+player.width/2){
           angle += PI;
           }
@@ -254,11 +254,9 @@ int main(int argc, char *argv[]){
       data[0] = player.x;
       data[1] = player.y;
       dataPtr = (void*)data;
-    SDLNet_CheckSockets(socketSet,1);
-    float TimeSend = SDL_GetTicks();
-
-    SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
-    printf("time waiting: %d\n",SDL_GetTicks()-TimeSend);
+     if(SDLNet_CheckSockets(socketSet,1000) != -1){
+      SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
+     }
     int index = PLAYERSDATA[2*MAX_CLIENTS];
     last_tick = SDL_GetTicks();
     }
