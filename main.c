@@ -249,17 +249,20 @@ int main(int argc, char *argv[]){
   SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
   SDLNet_TCP_AddSocket(socketSet, client);
   while(running){
-    if(SDL_GetTicks()-last_tick>10){
+    if(SDL_GetTicks()-last_tick>0){
       if(SDLNet_TCP_Send(client,dataPtr,6*sizeof(dataPtr)) > 0){
       data[0] = player.x;
       data[1] = player.y;
       dataPtr = (void*)data;
+    SDLNet_CheckSockets(socketSet,1);
+    float TimeSend = SDL_GetTicks();
+
     SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
+    printf("time waiting: %d\n",SDL_GetTicks()-TimeSend);
     int index = PLAYERSDATA[2*MAX_CLIENTS];
-   // printf("%f %f\n",PLAYERSDATA[2*MAX_CLIENTS+1+4*index],PLAYERSDATA[2*MAX_CLIENTS+1+4*index+1]);
+    last_tick = SDL_GetTicks();
     }
     else{break;}
-    last_tick = SDL_GetTicks();
     }
     MainLoop();
   }
