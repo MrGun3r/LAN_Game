@@ -243,7 +243,7 @@ int main(int argc, char *argv[]){
   INIT_GAMEDATA();
   SDLNet_Init();
   IPaddress ip;
-  SDLNet_ResolveHost(&ip,"192.168.8.116",1234);
+  SDLNet_ResolveHost(&ip,"192.168.8.119",1234);
   TCPsocket client=SDLNet_TCP_Open(&ip);
   void* dataPtr = data;
   SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
