@@ -8,7 +8,7 @@
 #define MAX_CLIENTS 3
 #define MAX_ROCKETS 4
 #define MAX_EXPLOSIONS 10
-float FRICTION = 0.1;
+float FRICTION = 0.05;
 int windowWidth = 900;
 int windowHeight = 600;
 int PLAYER_INDEX;
@@ -68,6 +68,9 @@ void INIT_GAMEDATA(){
   player.onPlatform = false;
   player.knockBackX = 0;
   player.knockBackY = 0;
+  player.fireRateMax = 1000;
+  player.fireRateTimer = 0;
+  player.percentageTaken = 10000;
   // OBJECTS
   platforms[0].reserved = true;
   platforms[0].x = 200;
@@ -96,7 +99,8 @@ void ControlPlayer(){
   if(key.w && player.onPlatform){
     player.accelerationY = -2250;
   }
-    if(key.mouseLeft && (PLAYERSDATA[2*MAX_CLIENTS + 2*PLAYER_INDEX+1] < 1 || PLAYERSDATA[2*MAX_CLIENTS + 2*PLAYER_INDEX + 2] < 1)){
+    if(key.mouseLeft && (PLAYERSDATA[2*MAX_CLIENTS + 2*PLAYER_INDEX+1] < 1 || PLAYERSDATA[2*MAX_CLIENTS + 2*PLAYER_INDEX + 2] < 1) && player.fireRateTimer > player.fireRateMax){
+    player.fireRateTimer = 0;
     data[2] = player.x+player.width/4;
     data[3] = player.y+player.height/4;
     float angle = SDL_atan((player.y+player.height/2 - mouse.y)/(player.x+player.width/2 - mouse.x));
@@ -216,6 +220,7 @@ void UpdateData(){
         data[5] = 0;
       }
     ControlPlayer();
+    player.fireRateTimer += 1000*deltaTime;
       player.x += (player.veloX+player.knockBackX)*deltaTime;
       player.y += (player.veloY+player.knockBackY)*deltaTime;
       
@@ -228,6 +233,7 @@ void UpdateData(){
       if(player.y > windowHeight){
         player.y = 100;
         player.veloY = 0;
+        player.percentageTaken = 10000;
       }
      bool BoolSwitch = true;
      for(int j = 0;j<sizeof(platforms)/sizeof(platforms[0]);j++){
@@ -242,19 +248,22 @@ void UpdateData(){
     }
     for(int i = MAX_CLIENTS*2+1+2*MAX_ROCKETS;i<MAX_CLIENTS*2+1+2*MAX_ROCKETS+3*MAX_EXPLOSIONS;i+=3){
        float distance = pow(pow(PLAYERSDATA[i]-25-player.x,2)+pow(PLAYERSDATA[i+1]-25-player.y,2),0.5);
-       if(distance > 200 || PLAYERSDATA[i+2]<10){
+       if(distance > 200 || PLAYERSDATA[i+2]<230){
         continue;
        }
+       
        float angle = atan((PLAYERSDATA[i+1]-25-player.y)/(PLAYERSDATA[i]-25-player.x));
+       player.knockBackX = (player.percentageTaken/2)*(cos(angle))/distance;
        if(PLAYERSDATA[i]-25-player.x > 0){
-         player.knockBackX = -5000*(cos(angle))/distance;
+         player.knockBackX = -(player.percentageTaken/2)*(cos(angle))/distance;
        }
-       else{
-        player.knockBackX = 5000*(cos(angle))/distance;
+       player.knockBackY = (player.percentageTaken)*((sin(angle)))/distance;
+       if((PLAYERSDATA[i+1]-25-player.y) > 0 && (PLAYERSDATA[i]-25-player.x) > 0){
+        player.knockBackY = -(player.percentageTaken)*((sin(angle)))/distance;
        }
-      
-       player.knockBackY = 5000*(sin(angle))/distance;
-       //printf("%f %f\n",player.knockBackX,player.knockBackY);
+       player.percentageTaken += (SDL_abs((int)player.knockBackX) + SDL_abs((int)player.knockBackY))*5;
+       printf("%f\n",player.percentageTaken);
+       player.accelerationY = 0;
     }
      if(player.onPlatform){
       player.veloY = 0;
@@ -264,11 +273,11 @@ void UpdateData(){
       player.accelerationY += (float)(12000*(2-key.w))*deltaTime;
      }
       player.veloX *= pow(FRICTION,deltaTime);
-      player.knockBackX *= pow(0.25,deltaTime);
-      if(player.knockBackX < 1 && player.knockBackY > -1 ){
+      player.knockBackX *= pow(0.025,deltaTime);
+      if(player.knockBackX < 1 && player.knockBackX > -1 ){
         player.knockBackX = 0;
       }
-      player.knockBackY *= pow(0.25,deltaTime);
+      player.knockBackY *= pow(0.025,deltaTime);
       if(player.knockBackY < 1 && player.knockBackY > -1 ){
         player.knockBackY = 0;
       }
