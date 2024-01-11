@@ -135,7 +135,6 @@ void ServerData(float *data){
 for(int i = 0;i<sizeof(platforms)/sizeof(platforms[0]);i++){
   if(platforms[i].reserved){
     if(collisionCheck(data[4],data[5],ROCKET_WIDTH,ROCKET_HEIGHT,platforms[i].x,platforms[i].y,platforms[i].width,platforms[i].height)){
-    printf("bru\n");
     data[10] = data[4];
     data[11] = data[5];
     data[12] = 0;

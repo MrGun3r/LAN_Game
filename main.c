@@ -379,7 +379,6 @@ void UpdateData(){
        if(j == (int)PLAYER_INDEX){
         hitCoeff = 20000;
        }
-       printf("%f\n",player.percentageTaken);
        player.knockBackX = (hitCoeff/2)*(cos(angle))/distance;
        if(PLAYERSDATA[i]-25-player.x > 0){
          player.knockBackX = -(hitCoeff/2)*(cos(angle))/distance;
