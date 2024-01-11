@@ -22,6 +22,13 @@ struct playersData{
   float knockBackX;
   float knockBackY;
   float speedLimit;
+  float fireRateMax;
+  float fireRateTimer;
+  float percentageTaken;
+  float rocketAngle;
+  float angle;
+  float animationID;
+  float deaths;
 } player;
 struct rocketData{
  float x;
