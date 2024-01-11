@@ -376,9 +376,7 @@ void UpdateData(){
        
 
        float hitCoeff = player.percentageTaken;
-       if(j == (int)PLAYER_INDEX){
-        hitCoeff = 20000;
-       }
+
        player.knockBackX = (hitCoeff/2)*(cos(angle))/distance;
        if(PLAYERSDATA[i]-25-player.x > 0){
          player.knockBackX = -(hitCoeff/2)*(cos(angle))/distance;
@@ -387,9 +385,9 @@ void UpdateData(){
        if((PLAYERSDATA[i+1]-25-player.y) > 0 && (PLAYERSDATA[i]-25-player.x) > 0){
         player.knockBackY = -(hitCoeff)*((sin(angle)))/distance;
        }
-       if(j != (int)PLAYER_INDEX){
-        player.percentageTaken += (SDL_abs((int)player.knockBackX) + SDL_abs((int)player.knockBackY))*2;
-       }
+       
+      player.percentageTaken += (SDL_abs((int)player.knockBackX) + SDL_abs((int)player.knockBackY))*2;
+        
        
        player.accelerationY = 0;
        player.accelerationX = 0;
