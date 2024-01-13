@@ -28,7 +28,12 @@ struct playersData{
   float rocketAngle;
   float angle;
   float animationID;
-  float deaths;
+  float score;
+  float tagID;
+  float taggingDuration;
+  float weaponPushBack;
+  float killedEnemyOfId;
+  float killedEnemyTextDuration;
 } player;
 struct rocketData{
  float x;

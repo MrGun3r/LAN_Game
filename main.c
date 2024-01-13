@@ -7,10 +7,10 @@
 #include <math.h>
 #define GRAVITY 1000
 #define PI 3.1415
-#define MAX_CLIENTS 3
+#define MAX_CLIENTS 4
 #define MAX_ROCKETS 4
-#define MAX_EXPLOSIONS 10
-
+#define MAX_EXPLOSIONS 4
+#define KILL_FEED 5
 #define ROCKET_WIDTH 20
 #define ROCKET_HEIGHT 7
 float FRICTION = 0.05;
@@ -23,7 +23,7 @@ bool running = true;
 float deltaTime = 0;
 float last_frame = 0;
 float last_tick = 0;
-float PLAYERSDATA[MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS];
+float PLAYERSDATA[MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS+1+2*KILL_FEED];
 // data to send to server
 float data[10];
 SDL_Surface * TEXTURES_Surface = NULL;
@@ -74,10 +74,10 @@ int INIT_VIDEO(){
 }
 void INIT_GAMEDATA(){
   for(int i = 0;i<sizeof(PLAYERSDATA)/sizeof(PLAYERSDATA[0]);i++){
-    PLAYERSDATA[i] = -99;
+    PLAYERSDATA[i] = -9999;
   }
   for(int i = 0;i<sizeof(data)/sizeof(data[0]);i++){
-    data[i] = -99;
+    data[i] = -9999;
   }
   // PLAYERS
   player.x = 200;
@@ -92,13 +92,18 @@ void INIT_GAMEDATA(){
   player.onPlatform = false;
   player.knockBackX = 0;
   player.knockBackY = 0;
-  player.fireRateMax = 750;
+  player.fireRateMax = 500;
   player.fireRateTimer = 0;
   player.percentageTaken = 20000;
   player.rocketAngle = 0;
   player.angle = 0;
   player.animationID = 0;
-  player.deaths = 0;
+  player.score = 0;
+  player.tagID = -1;
+  player.taggingDuration = 0;
+  player.weaponPushBack = 0;
+  player.killedEnemyOfId = -1;
+  player.killedEnemyTextDuration = 0;
   // OBJECTS
   platforms[0].reserved = true;
   platforms[0].x = 200;
@@ -153,14 +158,15 @@ void ControlPlayer(){
   }
     if(key.mouseLeft && player.fireRateTimer > player.fireRateMax && (PLAYERSDATA[4*MAX_CLIENTS+1+3*PLAYER_INDEX] < 0 || PLAYERSDATA[4*MAX_CLIENTS+1+3*PLAYER_INDEX+1] < 0 )){
     player.fireRateTimer = 0;
-    data[4] = player.x+player.width/4;
-    data[5] = player.y+player.height/4;
+    data[4] = player.x+player.width/2;
+    data[5] = player.y+player.height/2;
     player.rocketAngle = SDL_atan((player.y+player.height/2 - mouse.y)/(player.x+player.width/2 - mouse.x));
     if((float)mouse.x >= player.x+player.width/2){
       player.rocketAngle += PI;
     }
     data[6] = -7*SDL_cos(player.rocketAngle);
     data[7] = -7*SDL_sin(player.rocketAngle);
+    player.weaponPushBack = 10;
   }
   else{
     data[4] = PLAYERSDATA[4*MAX_CLIENTS+1+3*PLAYER_INDEX];
@@ -251,11 +257,11 @@ void DrawVideo(){
     SDL_RenderCopyEx(renderer,TEXTURES_Texture,&(SDL_Rect){
       0,0,35,25
     },&(SDL_Rect){
-    player.x+(int)(player.width/4)-10*(flipRocket == SDL_FLIP_VERTICAL),player.y+(int)(player.height/4),25,21
+    player.x+(int)(player.width/4+player.weaponPushBack*cos(player.angle))-10*(flipRocket == SDL_FLIP_VERTICAL),player.y+(int)(player.height/4+player.weaponPushBack*sin(player.angle)),25,21
    },(player.angle-PI)*360/(2*PI),NULL,flipRocket);
 
     for(int i = 0;i<4*MAX_CLIENTS;i+=4){
-      if((PLAYERSDATA[i] > -98 || PLAYERSDATA[i+1] > -98) && i/4 != PLAYER_INDEX){
+      if((PLAYERSDATA[i] > -9998 || PLAYERSDATA[i+1] > -9998) && i/4 != PLAYER_INDEX){
         SDL_SetTextureColorMod(TEXTURES_Texture,255,0,0);
         flipPlayer = SDL_FLIP_NONE;
         if(PLAYERSDATA[i+3] < 0){
@@ -314,24 +320,86 @@ void DrawVideo(){
 
     // DRAW SCOREBOARD
     for(int i = 0;i<MAX_CLIENTS;i++){
-      if(PLAYERSDATA[4*i]>0 && PLAYERSDATA[4*i+1] > 0){
+      if(PLAYERSDATA[4*i]>-9999 && PLAYERSDATA[4*i+1] > -9999){
         int deaths = PLAYERSDATA[MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+i];
         char displayText[15];
-        sprintf(displayText,"Player %d x %d",i,deaths);
-        int color[3] = {255,0,0};
+        sprintf(displayText,"Player %d  %d",i,deaths);
+        int color[3] = {200,0,0};
         if(PLAYER_INDEX == i){
            SDL_memcpy(&color,(int[3]){255,255,255},3*sizeof(int));
         }
-        renderText(displayText,sizeof("Player 0 x ")+(int)SDL_log10(deaths+1),10,10+i*25,(sizeof("Player 0 x ")+(int)SDL_log10(deaths+1))*10,20,255,color);
+        renderText(displayText,sizeof("Player 0  ")+(int)SDL_log10(deaths+1),10,10+i*25,(sizeof("Player 0  ")+(int)SDL_log10(deaths+1))*10,20,255,color);
+        
+        SDL_SetRenderDrawColor(renderer,0,0,0,255);
+        SDL_RenderFillRect(renderer,&(SDL_Rect){
+          10*8 +13,8+i*25,5,22
+        });
+        
+        SDL_SetRenderDrawColor(renderer,200,200,200,255);
+        SDL_RenderFillRect(renderer,&(SDL_Rect){
+          10*8 +15,10+i*25,5,20
+        });
+
       }
-      
     }
+    // DRAW KILL ALERT
+    if(player.killedEnemyOfId > -0.5){
+      char killedText[10];
+      sprintf(killedText,"Player %d",(int)player.killedEnemyOfId);
+      renderText("You killed",sizeof("You killed"),windowWidth/2-5*sizeof("You killed Player 0"),200,10*sizeof("You Killed"),20,255,(int[3]){255,255,255});
+      renderText(killedText,sizeof("Player 0"),windowWidth/2-5*sizeof("You killed Player 0")+10*sizeof("You Killed"),200,10*sizeof("Player 0"),20,255,(int[3]){200,0,0});
+    }
+    // DRAW PERCENTAGE TEXT
+    char percentageText[4];
+    sprintf(percentageText,"%d",(int)(player.percentageTaken/20));
+    renderText(percentageText,(int)SDL_log10((player.percentageTaken/20 ) + 1),10,windowHeight-30,(int)SDL_log10((player.percentageTaken/20)+ 1)*10,20,255,(int[3]){255,255,255});
+
+
+    // DRAW KILL FEED
+    for(int i = MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS+1;i<MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS+1+2*KILL_FEED;i+=2){
+      int j = (i-(MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS+1))/2;
+  
+      if(PLAYERSDATA[i] > -0.5 && PLAYERSDATA[i+1] > -0.5){
+        char textKillFeed[26];
+        sprintf(textKillFeed,"Player %d Killed Player %d",(int)PLAYERSDATA[i],(int)PLAYERSDATA[i+1]);
+        renderText(textKillFeed,sizeof(textKillFeed),windowWidth-8*sizeof(textKillFeed),10+17*j,8*sizeof(textKillFeed),15,255,(int[3]){200,200,200});
+      }
+    }
+
+
+
     SDL_RenderPresent(renderer);
 }
 void UpdateData(){
+  player.score = PLAYERSDATA[MAX_CLIENTS*4+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+PLAYER_INDEX];
+  if(player.tagID > -0.5){
+    player.taggingDuration += 1000*deltaTime;
+    if(player.taggingDuration>5000){
+      player.tagID = -1;
+      player.taggingDuration = 0;
+   
+    }
+  }
+  if(player.killedEnemyOfId > -0.5){
+    player.killedEnemyTextDuration += 1000*deltaTime;
+    if(player.killedEnemyTextDuration > 2500){
+      player.killedEnemyOfId = -1;
+      player.killedEnemyTextDuration = 0;
+    }
+  }
   if(PLAYERSDATA[4*MAX_CLIENTS+1+3*PLAYER_INDEX] < 0 || PLAYERSDATA[4*MAX_CLIENTS+1+3*PLAYER_INDEX+1] < 0){
         data[6] = 0;
         data[7] = 0;
+      }
+      if(fabs(player.weaponPushBack)>0.1){
+        player.weaponPushBack*=pow(0.2,deltaTime);
+      }
+      else{
+        player.weaponPushBack = 0;
+      }
+      if(PLAYERSDATA[4*MAX_CLIENTS+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS] > -0.5){
+        player.killedEnemyOfId = PLAYERSDATA[4*MAX_CLIENTS+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+MAX_CLIENTS]; 
+        player.killedEnemyTextDuration = 0;     
       }
     ControlPlayer();
     player.fireRateTimer += 1000*deltaTime;
@@ -344,11 +412,22 @@ void UpdateData(){
       if(SDL_abs(player.veloY) < player.speedLimit){
         player.veloY += (player.accelerationY)*deltaTime;
       }
-      if(player.y > windowHeight){
-        player.deaths++;
+      data[9] = -1;
+      if(player.y > windowHeight || player.y < -200 || fabs(player.x+windowWidth/2) > 2000+windowWidth/2){
+        if(player.tagID>-0.5){
+          data[9] = player.tagID;
+        }
+        else{
+         
+          data[9] = PLAYER_INDEX;
+        }
+        player.tagID = -1;
+        player.taggingDuration = 0;
         player.y = 100;
         player.x = 250;
         player.veloY = 0;
+        player.knockBackY = 0;
+        player.knockBackX = 0;
         player.percentageTaken = 10000;
       }
      bool BoolSwitch = true;
@@ -362,19 +441,18 @@ void UpdateData(){
         }
       }
     }
-    int j = 0;
+    int j;
     for(int i = MAX_CLIENTS*4+1+3*MAX_ROCKETS;i<MAX_CLIENTS*3+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS;i+=3){
        float distance = pow(pow(PLAYERSDATA[i]-25-player.x,2)+pow(PLAYERSDATA[i+1]-25-player.y,2),0.5);
+       j = (int)(i-(MAX_CLIENTS*4+1+3*MAX_ROCKETS))/3;
        if(distance > 100 || PLAYERSDATA[i+2]>1){
         continue;
        }
-       if(distance < 1){
-        distance = 1;
+       if(distance < 5){
+        distance = 5;
        }
 
        float angle = atan((PLAYERSDATA[i+1]-25-player.y)/(PLAYERSDATA[i]-25-player.x));
-       
-
        float hitCoeff = player.percentageTaken;
 
        player.knockBackX = (hitCoeff/2)*(cos(angle))/distance;
@@ -385,13 +463,20 @@ void UpdateData(){
        if((PLAYERSDATA[i+1]-25-player.y) > 0 && (PLAYERSDATA[i]-25-player.x) > 0){
         player.knockBackY = -(hitCoeff)*((sin(angle)))/distance;
        }
-       
-      player.percentageTaken += (SDL_abs((int)player.knockBackX) + SDL_abs((int)player.knockBackY))*2;
-        
-       
-       player.accelerationY = 0;
-       player.accelerationX = 0;
-       j++;
+      if(fabs(player.knockBackX) > 20000){
+        player.knockBackX = 20000*(-1*player.knockBackX < 0);
+      }
+      if(fabs(player.knockBackY) > 20000){
+        player.knockBackY = 20000*(-1*player.knockBackY < 0);
+      }
+      player.percentageTaken += (SDL_abs((int)player.knockBackX) + SDL_abs((int)player.knockBackY));
+
+      if(j != PLAYER_INDEX){
+        player.tagID = j;
+        player.taggingDuration = 0;
+      }
+      player.accelerationY = 0;
+      player.accelerationX = 0;
     }
      if(player.onPlatform){
       player.veloY = 0;
@@ -432,25 +517,42 @@ void Program_Kill(){
   SDL_Quit();
 }
 int main(int argc, char *argv[]){
-  INIT_VIDEO();
-  INIT_GAMEDATA();
   SDLNet_Init();
   IPaddress ip;
-  SDLNet_ResolveHost(&ip,"192.168.8.119",1234);
+
+  
+  char ipConnect[16];
+  int portConnect;
+  bool connected = false;
+  while(!connected){
+  printf("Enter IP address to join : ");
+  //scanf("%s",&ipConnect);
+  printf("Enter port to join : ");
+  //scanf("%d",&portConnect);
+  printf("Connecting to %s:%d...\n",ipConnect,portConnect);
+  if(SDLNet_ResolveHost(&ip,"192.168.8.119",1234) != -1){
+    connected = true;
+  }
+  else{
+    printf("Failed to connected.\n");
+  }
+  }
+  printf("Connected to %s:%d\n",ipConnect,portConnect);
   TCPsocket client=SDLNet_TCP_Open(&ip);
+  INIT_VIDEO();
+  INIT_GAMEDATA();
   void* dataPtr = data;
   SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
-  SDLNet_TCP_AddSocket(socketSet, client);;
+  SDLNet_TCP_AddSocket(socketSet, client);
   while(running){
     if(SDL_GetTicks()-last_tick>0){
       data[0] = player.x;
       data[1] = player.y;
       data[2] = player.angle;
       data[8] = player.rocketAngle;
-      data[9] = player.deaths;
       data[3] = player.animationID;
       dataPtr = (void*)data; 
-
+      
       if(SDLNet_TCP_Send(client,dataPtr,10*sizeof(dataPtr)) < 0){
         break;
       }
