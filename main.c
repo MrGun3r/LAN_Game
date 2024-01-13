@@ -526,11 +526,11 @@ int main(int argc, char *argv[]){
   bool connected = false;
   while(!connected){
   printf("Enter IP address to join : ");
-  //scanf("%s",&ipConnect);
+  scanf("%s",&ipConnect);
   printf("Enter port to join : ");
-  //scanf("%d",&portConnect);
+  scanf("%d",&portConnect);
   printf("Connecting to %s:%d...\n",ipConnect,portConnect);
-  if(SDLNet_ResolveHost(&ip,"192.168.8.119",1234) != -1){
+  if(SDLNet_ResolveHost(&ip,ipConnect,portConnect) != -1){
     connected = true;
   }
   else{
@@ -542,7 +542,7 @@ int main(int argc, char *argv[]){
   INIT_VIDEO();
   INIT_GAMEDATA();
   void* dataPtr = data;
-  SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
+  SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(2);
   SDLNet_TCP_AddSocket(socketSet, client);
   while(running){
     if(SDL_GetTicks()-last_tick>0){
@@ -552,18 +552,20 @@ int main(int argc, char *argv[]){
       data[8] = player.rocketAngle;
       data[3] = player.animationID;
       dataPtr = (void*)data; 
+      int timeStart = SDL_GetTicks();
       
       if(SDLNet_TCP_Send(client,dataPtr,10*sizeof(dataPtr)) < 0){
         break;
-      }
-      if(SDLNet_CheckSockets(socketSet,0) != -1){ 
+        }
+      //if(SDLNet_CheckSockets(socketSet,10) > 0){ 
         SDLNet_TCP_Recv(client,PLAYERSDATA,sizeof(PLAYERSDATA));
         PLAYER_INDEX = PLAYERSDATA[4*MAX_CLIENTS];
-        }
+       // }
         last_tick = SDL_GetTicks();
     }
     MainLoop();
   }
+  SDLNet_FreeSocketSet(socketSet);
   SDLNet_TCP_Close(client);
   Program_Kill();
   return 0;

@@ -62,11 +62,13 @@ int main(int argc, char *argv[]){
   TCPsocket server=SDLNet_TCP_Open(&ip);
   printf("   Network Port. . . . . . . . . . . . . .: %d\n",SDLNet_Read16(&ip.port));
   system("C:\\Windows\\System32\\ipconfig | findstr /i \"ipv4\"");
+
+  printf("\n   Max Server Capacity : %d\n",MAX_CLIENTS);
   ClientData clients[MAX_CLIENTS];
-  SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(1);
+  SDLNet_SocketSet socketSet = SDLNet_AllocSocketSet(MAX_CLIENTS+1);
 
   SDLNet_TCP_AddSocket(socketSet, server);
-  printf("Server Open\n");
+  printf("    Server is Open\n");
   while(1){
     for(int i = 0;i<MAX_CLIENTS;i++){
         if(!clients[i].socket){
@@ -85,7 +87,7 @@ int main(int argc, char *argv[]){
       for(int i = 0;i<sizeof(data)/sizeof(data[0]);i++){
           data[i] = -9999;
        }
-      if(SDLNet_TCP_Recv(clients[i].socket,data,sizeof(data)) <= 0 && SDLNet_CheckSockets(socketSet,0) != -1){
+      if(SDLNet_TCP_Recv(clients[i].socket,data,sizeof(data)) <= 0){
         clients[i].socket = 0;
         activeClients--;
         activeClientList[i] = 0;
@@ -117,7 +119,6 @@ int main(int argc, char *argv[]){
     gameData[4*MAX_CLIENTS+1+3*MAX_ROCKETS+3*i+2] = data[12];
     // score data
     if(data[9]>-0.5){
-
       if((int)data[9] == i){
         if((int)gameData[4*MAX_CLIENTS+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+(int)data[9]]>0){
           gameData[4*MAX_CLIENTS+1+3*MAX_ROCKETS+3*MAX_EXPLOSIONS+(int)data[9]]--;
@@ -146,8 +147,9 @@ int main(int argc, char *argv[]){
     SDLNet_TCP_Send(clients[i].socket,gameDataPtr,sizeof(gameData));
     }
     }
-    SDL_Delay(10);   
+    SDL_Delay(10);  
   }
+  SDLNet_FreeSocketSet(socketSet);
   SDLNet_TCP_Close(server);
   SDLNet_Quit();
   return 0;
@@ -186,6 +188,7 @@ for(int i = 0;i<sizeof(platforms)/sizeof(platforms[0]);i++){
   }
   }
 }
+
 }
 
 void mapData(){
